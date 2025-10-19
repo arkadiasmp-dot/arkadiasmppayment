@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PayPal Checkout - ArkadiaSMP</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    body {
+      font-family: "Inter", sans-serif;
+      background-color: #0d1117;
+      color: #ffffff;
+    }
+  </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+  <!-- Checkout Container -->
+  <div class="w-full max-w-lg bg-gray-800 rounded-xl shadow-2xl p-6 md:p-8">
+    <!-- Header -->
+    <div class="text-center mb-6">
+      <h1 class="text-4xl font-extrabold text-[#7e22ce] mb-2">ArkadiaSMP Checkout</h1>
+      <p class="text-gray-400">Secure payment via PayPal</p>
+    </div>
+
+    <!-- Order Summary Card -->
+    <div class="bg-gray-700 p-5 rounded-lg mb-6">
+      <h2 class="text-xl font-semibold mb-3 border-b border-gray-600 pb-2">Order Summary</h2>
+      <div class="space-y-2 text-sm">
+        <div class="flex justify-between">
+          <span class="text-gray-400">Item Name:</span>
+          <span id="item-name" class="font-medium text-white">Loading...</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-gray-400">Mode / Type:</span>
+          <span id="item-mode-type" class="font-medium text-white">Loading...</span>
+        </div>
+        <div class="flex justify-between pt-3 border-t border-gray-600">
+          <span class="text-lg font-bold">Total Price:</span>
+          <span id="item-price" class="text-2xl font-extrabold text-green-400">£0.00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment Section -->
+    <div class="text-center">
+      <p class="text-gray-400 text-sm mb-4">Complete your purchase securely with PayPal.</p>
+      <!-- PayPal button container -->
+      <div id="paypal-button-container"></div>
+    </div>
+
+    <!-- Confirmation/Error Message -->
+    <div id="message-area" class="mt-6 p-4 text-center rounded-lg hidden"></div>
+  </div>
+
+  <!-- Load PayPal SDK -->
+  <script src="https://www.paypal.com/sdk/js?client-id=Acnf7G5kNf-TQfeMQe77weOfypeR9iqIcEZs1j7smHsKFklZcPTTDT_7s2qRLY6RmsCRz0deONuaJNwH&currency=GBP"></script>
+
+  <script>
+    function getUrlParams() {
+      return new URLSearchParams(window.location.search);
+    }
+
+    function capitalize(str) {
+      if (!str) return "";
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    function displayMessage(msg, bgColor) {
+      const messageArea = document.getElementById("message-area");
+      messageArea.innerHTML = msg;
+      messageArea.className = `mt-6 p-4 text-center rounded-lg ${bgColor} text-white`;
+      messageArea.classList.remove("hidden");
+    }
+
+    function loadOrderDetails() {
+      const params = getUrlParams();
+      const itemName = params.get("item") || "Error: Item Missing";
+      const itemPrice = parseFloat(params.get("price")) || 0.0;
+      const itemMode = params.get("mode") || "N/A";
+      const itemType = params.get("type") || "N/A";
+
+      const priceFormatted = `£${itemPrice.toFixed(2)}`;
+      const modeType = `${capitalize(itemMode)} / ${capitalize(itemType)}`;
+
+      document.getElementById("item-name").textContent = itemName;
+      document.getElementById("item-mode-type").textContent = modeType;
+      document.getElementById("item-price").textContent = priceFormatted;
+
+      if (!params.get("item") || !params.get("price")) {
+        displayMessage(
+          "🚨 Error: Missing item details in the URL. Please return to the store page.",
+          "bg-red-500"
+        );
+      }
+    }
+
+    loadOrderDetails();
+
+    paypal.Buttons({
+      createOrder: function (data, actions) {
+        const params = getUrlParams();
+        const itemPrice = parseFloat(params.get("price")) || 0.0;
+        const itemName = params.get("item") || "Unknown Item";
+
+        return actions.order.create({
+          purchase_units: [
+            {
+              amount: {
+                value: itemPrice.toFixed(2),
+                currency_code: "GBP",
+              },
+              description: itemName,
+            },
+          ],
+        });
+      },
+
+      onApprove: function (data, actions) {
+        return actions.order.capture().then(function (details) {
+          displayMessage(
+            `🎉 Success! Thank you, ${details.payer.name.given_name}. Your payment for ${details.purchase_units[0].description} was completed!`,
+            "bg-green-500"
+          );
+        });
+      },
+
+      onError: function (err) {
+        console.error(err);
+        displayMessage(
+          "⚠️ An error occurred during payment. Please try again later.",
+          "bg-red-500"
+        );
+      },
+    }).render("#paypal-button-container");
+  </script>
+</body>
+</html>
