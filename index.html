@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ArkadiaSMP Checkout</title>
-  <script> src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { font-family: "Inter", sans-serif; background-color: #0d1117; color: #fff; }
   </style>
@@ -26,16 +26,18 @@
 
     <!-- Payment buttons -->
     <div id="paypal-button-container"></div>
+    <div id="card-button-container" class="mt-4"></div>
 
     <!-- Optional message area -->
     <div id="message" class="mt-6 text-green-400 font-semibold"></div>
   </div>
 
   <!-- PayPal SDK -->
-  <!-- 🔹 Use your real client ID here -->
-  <script src="https://www.paypal.com/sdk/js?client-id=Acnf7G5kNf-TQfeMQe77weOfypeR9iqIcEZs1j7smHsKFklZcPTTDT_7s2qRLY6RmsCRz0deONuaJNwH&currency=GBP&components=buttons,hosted-fields,marks&enable-funding=card,venmo,applepay,paylater"></script>
+  <!-- 🔹 Use your real PayPal Client ID -->
+  <script src="https://www.paypal.com/sdk/js?client-id=Acnf7G5kNf-TQfeMQe77weOfypeR9iqIcEZs1j7smHsKFklZcPTTDT_7s2qRLY6RmsCRz0deONuaJNwH&currency=GBP&components=buttons,marks&enable-funding=card,paylater"></script>
 
   <script>
+    // Get URL parameters
     function getParams() {
       const url = new URL(window.location.href);
       return Object.fromEntries(url.searchParams.entries());
@@ -45,7 +47,7 @@
       return str ? str.charAt(0).toUpperCase() + str.slice(1) : "";
     }
 
-    // Load item details from URL
+    // Load item details
     const params = getParams();
     const itemName = params.item || "Unknown Item";
     const itemPrice = parseFloat(params.price || 0).toFixed(2);
@@ -56,40 +58,40 @@
     document.getElementById("item-mode-type").textContent = `${itemMode} / ${itemType}`;
     document.getElementById("item-price").textContent = `£${itemPrice}`;
 
-    // Render PayPal Smart Buttons (PayPal + Card + Pay Later)
-    paypal.Buttons({
-      style: {
-        layout: 'vertical',   // Stacks PayPal + Card buttons vertically
-        color: 'gold',
-        shape: 'pill',
-        label: 'paypal'
-      },
-      fundingSource: paypal.FUNDING.PAYPAL, // Main PayPal button
-      createOrder: (data, actions) => {
-        return actions.order.create({
-          purchase_units: [{
-            amount: { value: itemPrice },
-            description: `${itemName} (${itemMode}/${itemType})`
-          }]
-        });
-      },
-      onApprove: (data, actions) => {
-        return actions.order.capture().then(details => {
-          document.getElementById("message").textContent =
-            `🎉 Thanks, ${details.payer.name.given_name}! Payment successful for ${itemName}.`;
-        });
-      },
-      onError: err => {
-        console.error(err);
-        document.getElementById("message").textContent = "⚠️ Payment failed. Please try again.";
-      }
-    }).render('#paypal-button-container');
-
-    // Optional: Marks API renders "Pay with..." logos above buttons (if available)
-    if (paypal.Marks) {
-      paypal.Marks().render('#paypal-button-container');
+    // Function to render a PayPal button
+    function renderPayPalButton(container, fundingSource) {
+      paypal.Buttons({
+        style: {
+          layout: 'vertical',
+          color: fundingSource === paypal.FUNDING.CARD ? 'silver' : 'gold',
+          shape: 'pill',
+          label: fundingSource === paypal.FUNDING.CARD ? 'pay' : 'paypal'
+        },
+        fundingSource: fundingSource,
+        createOrder: (data, actions) => {
+          return actions.order.create({
+            purchase_units: [{
+              amount: { value: itemPrice },
+              description: `${itemName} (${itemMode}/${itemType})`
+            }]
+          });
+        },
+        onApprove: (data, actions) => {
+          return actions.order.capture().then(details => {
+            document.getElementById("message").textContent =
+              `🎉 Thanks, ${details.payer.name.given_name}! Payment successful for ${itemName}.`;
+          });
+        },
+        onError: err => {
+          console.error(err);
+          document.getElementById("message").textContent = "⚠️ Payment failed. Please try again.";
+        }
+      }).render(container);
     }
+
+    // Render PayPal and Card buttons
+    renderPayPalButton('#paypal-button-container', paypal.FUNDING.PAYPAL);
+    renderPayPalButton('#card-button-container', paypal.FUNDING.CARD);
   </script>
 </body>
 </html>
-
