@@ -4,16 +4,16 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000; // Render uses PORT env variable
 
 // To get __dirname in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Serve static files (optional, e.g., CSS, images)
-app.use(express.static(path.join(__dirname, 'public')));
+// Serve static files from /opt/render/project/src/public if you have assets
+app.use(express.static(path.join('/opt/render/project/src', 'public')));
 
-// Route to render the checkout page
+// Route to render the checkout page dynamically
 app.get('/checkout', (req, res) => {
   const { item = "Unknown Item", price = "0.00", mode = "N/A", type = "N/A" } = req.query;
 
@@ -46,14 +46,10 @@ app.get('/checkout', (req, res) => {
         </p>
       </div>
 
-      <!-- Payment buttons -->
       <div id="paypal-button-container"></div>
-
-      <!-- Optional message area -->
       <div id="message" class="mt-6 text-green-400 font-semibold"></div>
     </div>
 
-    <!-- ✅ PayPal SDK -->
     <script src="https://www.paypal.com/sdk/js?client-id=Acnf7G5kNf-TQfeMQe77weOfypeR9iqIcEZs1j7smHsKFklZcPTTDT_7s2qRLY6RmsCRz0deONuaJNwH&currency=GBP&components=buttons,funding-eligibility&enable-funding=card,paylater"></script>
 
     <script>
@@ -63,20 +59,12 @@ app.get('/checkout', (req, res) => {
       const itemPrice = "${parseFloat(price).toFixed(2)}";
 
       paypal.Buttons({
-        style: {
-          layout: 'vertical',
-          color: 'gold',
-          shape: 'pill',
-          label: 'paypal'
-        },
+        style: { layout: 'vertical', color: 'gold', shape: 'pill', label: 'paypal' },
         createOrder: (data, actions) => {
           return actions.order.create({
             purchase_units: [{
               description: \`\${itemName} (\${itemMode}/\${itemType})\`,
-              amount: {
-                currency_code: 'GBP',
-                value: itemPrice
-              }
+              amount: { currency_code: 'GBP', value: itemPrice }
             }]
           });
         },
@@ -99,6 +87,7 @@ app.get('/checkout', (req, res) => {
   `);
 });
 
+// Start server
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
