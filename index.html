@@ -1,78 +1,162 @@
-// server.js
-import express from 'express';
-import path from 'path';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PayPal Checkout - ArkadiaSMP</title>
 
-const app = express();
-const PORT = process.env.PORT || 10000;
+  <script src="https://cdn.tailwindcss.com"></script>
 
-// Serve static files from ./public (relative to project root)
-app.use(express.static(path.join(process.cwd(), 'public')));
+  <style>
+    body {
+      font-family: "Inter", sans-serif;
+      background-color: #0d1117;
+      color: #ffffff;
+    }
+  </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
 
-// Checkout route
-app.get('/checkout', (req, res) => {
-  const { item = "Unknown Item", price = "0.00", mode = "N/A", type = "N/A" } = req.query;
-
-  const capitalize = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1) : "";
-
-  res.send(`
-  <!DOCTYPE html>
-  <html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ArkadiaSMP Checkout</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-      body { font-family: "Inter", sans-serif; background-color: #0d1117; color: #fff; }
-    </style>
-  </head>
-  <body class="flex items-center justify-center min-h-screen p-4">
-
-    <div class="max-w-lg w-full bg-gray-800 rounded-xl shadow-xl p-6 text-center">
-      <h1 class="text-3xl font-extrabold text-purple-400 mb-3">ArkadiaSMP Checkout</h1>
-      <p class="text-gray-400 mb-6">Secure payments via PayPal or Card</p>
-
-      <div id="summary" class="bg-gray-700 rounded-lg p-4 mb-6 text-left">
-        <p><span class="text-gray-400">Item:</span> <span id="item-name" class="font-semibold text-white">${item}</span></p>
-        <p><span class="text-gray-400">Mode / Type:</span> <span id="item-mode-type" class="font-semibold text-white">${capitalize(mode)} / ${capitalize(type)}</span></p>
-        <p class="border-t border-gray-600 mt-3 pt-3 text-lg">
-          <span class="font-bold">Price:</span>
-          <span id="item-price" class="font-extrabold text-green-400">£${parseFloat(price).toFixed(2)}</span>
-        </p>
-      </div>
-
-      <div id="paypal-button-container"></div>
-      <div id="message" class="mt-6 text-green-400 font-semibold"></div>
+  <div class="w-full max-w-lg bg-gray-800 rounded-xl shadow-2xl p-6 md:p-8">
+    <div class="text-center mb-6">
+      <h1 class="text-4xl font-extrabold text-[#7e22ce] mb-2">ArkadiaSMP Checkout</h1>
+      <p class="text-gray-400">Secure payment via PayPal</p>
     </div>
 
-    <script src="https://www.paypal.com/sdk/js?client-id=Acnf7G5kNf-TQfeMQe77weOfypeR9iqIcEZs1j7smHsKFklZcPTTDT_7s2qRLY6RmsCRz0deONuaJNwH&currency=GBP&components=buttons,funding-eligibility&enable-funding=card,paylater"></script>
+    <div class="bg-gray-700 p-5 rounded-lg mb-6">
+      <h2 class="text-xl font-semibold mb-3 border-b border-gray-600 pb-2">Order Summary</h2>
+      <div class="space-y-2 text-sm">
+        <div class="flex justify-between">
+          <span class="text-gray-400">Item Name:</span>
+          <span id="item-name" class="font-medium text-white">Loading...</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-gray-400">Mode / Type:</span>
+          <span id="item-mode-type" class="font-medium text-white">Loading...</span>
+        </div>
+        <div class="flex justify-between pt-3 border-t border-gray-600">
+          <span class="text-lg font-bold">Total Price:</span>
+          <span id="item-price" class="text-2xl font-extrabold text-green-400">£0.00</span>
+        </div>
+      </div>
+    </div>
 
-    <script>
-      const itemName = "${item}";
-      const itemMode = "${capitalize(mode)}";
-      const itemType = "${capitalize(type)}";
-      const itemPrice = "${parseFloat(price).toFixed(2)}";
+    <div class="text-center">
+      <p class="text-gray-400 text-sm mb-4">Complete your purchase securely with PayPal.</p>
+      <div id="paypal-button-container"></div>
+    </div>
 
-      paypal.Buttons({
-        style: { layout: 'vertical', color: 'gold', shape: 'pill', label: 'paypal' },
-        createOrder: (data, actions) => actions.order.create({
-          purchase_units: [{ description: \`\${itemName} (\${itemMode}/\${itemType})\`, amount: { currency_code: 'GBP', value: itemPrice } }]
-        }),
-        onApprove: (data, actions) => actions.order.capture().then(details => {
-          const payer = details.payer.name.given_name;
-          document.getElementById("message").innerHTML =
-            \`🎉 Thanks, <b>\${payer}</b>! Your payment for <b>\${itemName}</b> was successful.\`;
-        }),
-        onError: (err) => {
-          console.error('PayPal Error:', err);
-          document.getElementById("message").innerHTML = "⚠️ Payment failed. Please try again.";
+    <div id="message-area" class="mt-6 p-4 text-center rounded-lg hidden"></div>
+  </div>
+
+  <script>
+    // In a production environment, you would use a backend to securely fetch this,
+    // or for a static Vercel deployment, you can keep the hardcoded ID or use
+    // Vercel's Edge/Serverless functions to inject it. For pure static HTML, 
+    // the original hardcoded line below (or a template literal) is often used.
+    
+    // **Option A (Simplest for static HTML): Use the original hardcoded line**
+    const PAYPAL_CLIENT_ID = 'Acnf7G5kNf-TQfeMQe77weOfypeR9iqIcEZs1j7smHsKFklZcPTTDT_7s2qRLY6RmsCRz0deONuaJNwH';
+    
+    // **Option B (For Vercel with a build step like Next.js/React): Use environment variable**
+    // const PAYPAL_CLIENT_ID = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID; // Example for Next.js
+    
+    // Load the script
+    const script = document.createElement('script');
+    script.src = `https://www.paypal.com/sdk/js?client-id=${PAYPAL_CLIENT_ID}&currency=GBP`;
+    script.onload = initializePayPal;
+    document.head.appendChild(script);
+
+
+    function getUrlParams() {
+      return new URLSearchParams(window.location.search);
+    }
+
+    function capitalize(str) {
+      if (!str) return "";
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    function displayMessage(msg, bgColor) {
+      const messageArea = document.getElementById("message-area");
+      messageArea.innerHTML = msg;
+      messageArea.className = `mt-6 p-4 text-center rounded-lg ${bgColor} text-white`;
+      messageArea.classList.remove("hidden");
+    }
+
+    function loadOrderDetails() {
+      const params = getUrlParams();
+      const itemName = params.get("item") || "Error: Item Missing";
+      const itemPrice = parseFloat(params.get("price")) || 0.0;
+      const itemMode = params.get("mode") || "N/A";
+      const itemType = params.get("type") || "N/A";
+
+      const priceFormatted = `£${itemPrice.toFixed(2)}`;
+      const modeType = `${capitalize(itemMode)} / ${capitalize(itemType)}`;
+
+      document.getElementById("item-name").textContent = itemName;
+      document.getElementById("item-mode-type").textContent = modeType;
+      document.getElementById("item-price").textContent = priceFormatted;
+
+      if (!params.get("item") || !params.get("price")) {
+        displayMessage(
+          "🚨 Error: Missing item details in the URL. Please return to the store page.",
+          "bg-red-500"
+        );
+      }
+      
+      return { itemName, itemPrice };
+    }
+
+    // Call loadOrderDetails immediately
+    const { itemName, itemPrice } = loadOrderDetails();
+
+    function initializePayPal() {
+        if (typeof paypal === 'undefined') {
+            // Handle case where PayPal script failed to load
+            displayMessage("⚠️ PayPal script failed to load. Please check your connection.", "bg-red-700");
+            return;
         }
-      }).render('#paypal-button-container');
-    </script>
 
-  </body>
-  </html>
-  `);
-});
+        if (itemPrice <= 0 || isNaN(itemPrice)) {
+            // Stop initialization if price is invalid/missing
+            return;
+        }
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+        paypal.Buttons({
+          createOrder: function (data, actions) {
+            return actions.order.create({
+              purchase_units: [
+                {
+                  amount: {
+                    value: itemPrice.toFixed(2),
+                    currency_code: "GBP",
+                  },
+                  description: itemName,
+                },
+              ],
+            });
+          },
+
+          onApprove: function (data, actions) {
+            return actions.order.capture().then(function (details) {
+              displayMessage(
+                `🎉 Success! Thank you, ${details.payer.name.given_name}. Your payment for ${details.purchase_units[0].description} was completed!`,
+                "bg-green-500"
+              );
+              // **TODO: Add logic here to fulfill the order (e.g., call a server endpoint)**
+            });
+          },
+
+          onError: function (err) {
+            console.error(err);
+            displayMessage(
+              "⚠️ An error occurred during payment. Please try again later.",
+              "bg-red-500"
+            );
+          },
+        }).render("#paypal-button-container");
+    }
+  </script>
+</body>
+</html>
