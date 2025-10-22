@@ -1,93 +1,104 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ArkadiaSMP Checkout</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body { font-family: "Inter", sans-serif; background-color: #0d1117; color: #fff; }
-  </style>
-</head>
-<body class="flex items-center justify-center min-h-screen p-4">
+// server.js
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-  <div class="max-w-lg w-full bg-gray-800 rounded-xl shadow-xl p-6 text-center">
-    <h1 class="text-3xl font-extrabold text-purple-400 mb-3">ArkadiaSMP Checkout</h1>
-    <p class="text-gray-400 mb-6">Secure payments via PayPal or Card</p>
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-    <div id="summary" class="bg-gray-700 rounded-lg p-4 mb-6 text-left">
-      <p><span class="text-gray-400">Item:</span> <span id="item-name" class="font-semibold text-white"></span></p>
-      <p><span class="text-gray-400">Mode / Type:</span> <span id="item-mode-type" class="font-semibold text-white"></span></p>
-      <p class="border-t border-gray-600 mt-3 pt-3 text-lg">
-        <span class="font-bold">Price:</span>
-        <span id="item-price" class="font-extrabold text-green-400"></span>
-      </p>
+// To get __dirname in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Serve static files (optional, e.g., CSS, images)
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Route to render the checkout page
+app.get('/checkout', (req, res) => {
+  const { item = "Unknown Item", price = "0.00", mode = "N/A", type = "N/A" } = req.query;
+
+  const capitalize = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1) : "";
+
+  res.send(`
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ArkadiaSMP Checkout</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body { font-family: "Inter", sans-serif; background-color: #0d1117; color: #fff; }
+    </style>
+  </head>
+  <body class="flex items-center justify-center min-h-screen p-4">
+
+    <div class="max-w-lg w-full bg-gray-800 rounded-xl shadow-xl p-6 text-center">
+      <h1 class="text-3xl font-extrabold text-purple-400 mb-3">ArkadiaSMP Checkout</h1>
+      <p class="text-gray-400 mb-6">Secure payments via PayPal or Card</p>
+
+      <div id="summary" class="bg-gray-700 rounded-lg p-4 mb-6 text-left">
+        <p><span class="text-gray-400">Item:</span> <span id="item-name" class="font-semibold text-white">${item}</span></p>
+        <p><span class="text-gray-400">Mode / Type:</span> <span id="item-mode-type" class="font-semibold text-white">${capitalize(mode)} / ${capitalize(type)}</span></p>
+        <p class="border-t border-gray-600 mt-3 pt-3 text-lg">
+          <span class="font-bold">Price:</span>
+          <span id="item-price" class="font-extrabold text-green-400">£${parseFloat(price).toFixed(2)}</span>
+        </p>
+      </div>
+
+      <!-- Payment buttons -->
+      <div id="paypal-button-container"></div>
+
+      <!-- Optional message area -->
+      <div id="message" class="mt-6 text-green-400 font-semibold"></div>
     </div>
 
-    <!-- Payment buttons -->
-    <div id="paypal-button-container"></div>
+    <!-- ✅ PayPal SDK -->
+    <script src="https://www.paypal.com/sdk/js?client-id=Acnf7G5kNf-TQfeMQe77weOfypeR9iqIcEZs1j7smHsKFklZcPTTDT_7s2qRLY6RmsCRz0deONuaJNwH&currency=GBP&components=buttons,funding-eligibility&enable-funding=card,paylater"></script>
 
-    <!-- Optional message area -->
-    <div id="message" class="mt-6 text-green-400 font-semibold"></div>
-  </div>
+    <script>
+      const itemName = "${item}";
+      const itemMode = "${capitalize(mode)}";
+      const itemType = "${capitalize(type)}";
+      const itemPrice = "${parseFloat(price).toFixed(2)}";
 
-  <!-- ✅ PayPal SDK with card + paypal funding -->
-  <script src="https://www.paypal.com/sdk/js?client-id=Acnf7G5kNf-TQfeMQe77weOfypeR9iqIcEZs1j7smHsKFklZcPTTDT_7s2qRLY6RmsCRz0deONuaJNwH&currency=GBP&components=buttons,funding-eligibility&enable-funding=card,paylater"></script>
-
-  <script>
-    // Parse URL parameters
-    function getParams() {
-      const url = new URL(window.location.href);
-      return Object.fromEntries(url.searchParams.entries());
-    }
-
-    function capitalize(str) {
-      return str ? str.charAt(0).toUpperCase() + str.slice(1) : "";
-    }
-
-    const params = getParams();
-    const itemName = params.item || "Unknown Item";
-    const itemPrice = parseFloat(params.price || 0).toFixed(2);
-    const itemMode = capitalize(params.mode || "N/A");
-    const itemType = capitalize(params.type || "N/A");
-
-    document.getElementById("item-name").textContent = itemName;
-    document.getElementById("item-mode-type").textContent = `${itemMode} / ${itemType}`;
-    document.getElementById("item-price").textContent = `£${itemPrice}`;
-
-    // ✅ Render Smart Payment Buttons (PayPal + Card)
-    paypal.Buttons({
-      style: {
-        layout: 'vertical', // show stacked
-        color: 'gold',
-        shape: 'pill',
-        label: 'paypal'
-      },
-      fundingSource: undefined, // allows all funding sources (PayPal, Card, etc.)
-      createOrder: (data, actions) => {
-        return actions.order.create({
-          purchase_units: [{
-            description: `${itemName} (${itemMode}/${itemType})`,
-            amount: {
-              currency_code: 'GBP',
-              value: itemPrice
-            }
-          }]
-        });
-      },
-      onApprove: (data, actions) => {
-        return actions.order.capture().then(details => {
-          const payer = details.payer.name.given_name;
+      paypal.Buttons({
+        style: {
+          layout: 'vertical',
+          color: 'gold',
+          shape: 'pill',
+          label: 'paypal'
+        },
+        createOrder: (data, actions) => {
+          return actions.order.create({
+            purchase_units: [{
+              description: \`\${itemName} (\${itemMode}/\${itemType})\`,
+              amount: {
+                currency_code: 'GBP',
+                value: itemPrice
+              }
+            }]
+          });
+        },
+        onApprove: (data, actions) => {
+          return actions.order.capture().then(details => {
+            const payer = details.payer.name.given_name;
+            document.getElementById("message").innerHTML =
+              \`🎉 Thanks, <b>\${payer}</b>! Your payment for <b>\${itemName}</b> was successful.\`;
+          });
+        },
+        onError: (err) => {
+          console.error('PayPal Error:', err);
           document.getElementById("message").innerHTML =
-            `🎉 Thanks, <b>${payer}</b>! Your payment for <b>${itemName}</b> was successful.`;
-        });
-      },
-      onError: (err) => {
-        console.error('PayPal Error:', err);
-        document.getElementById("message").innerHTML =
-          "⚠️ Payment failed. Please try again.";
-      }
-    }).render('#paypal-button-container');
-  </script>
-</body>
-</html>
+            "⚠️ Payment failed. Please try again.";
+        }
+      }).render('#paypal-button-container');
+    </script>
+  </body>
+  </html>
+  `);
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
